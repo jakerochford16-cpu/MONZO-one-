@@ -1,17 +1,18 @@
 """Index and currency snapshot - the stats line of the brief."""
 
+import html
 import sys
 import requests
 
 UA = {"User-Agent": "Mozilla/5.0 (portfolio-brief)"}
 
 BENCHMARKS = [
-    ("American Companies (S&amp;P 500)", "^GSPC", "{:,.0f}"),
-    ("Tech Focused (Nasdaq)",           "^IXIC", "{:,.0f}"),
-    ("Gold (spot)",                     "GC=F",  "${:,.0f}"),
-    ("FTSE 100",                        "^FTSE", "{:,.0f}"),
-    ("Bitcoin",                         "BTC-USD", "${:,.0f}"),
-    ("GBP/USD",                         "GBPUSD=X", "{:.3f}"),
+    ("S&P 500",   "^GSPC",     "{:,.0f}"),
+    ("Nasdaq",    "^IXIC",     "{:,.0f}"),
+    ("Gold spot", "GC=F",      "${:,.0f}"),
+    ("FTSE 100",  "^FTSE",     "{:,.0f}"),
+    ("Bitcoin",   "BTC-USD",   "${:,.0f}"),
+    ("GBP/USD",   "GBPUSD=X",  "{:.3f}"),
 ]
 
 
@@ -34,15 +35,25 @@ def quote(ticker):
 
 
 def render():
-    lines = []
+    """Aligned monospace table of index/FX levels, wrapped in <pre>."""
+    rows = []
     for label, ticker, fmt in BENCHMARKS:
         last, chg = quote(ticker)
         if last is None:
             continue
-        move = ""
-        if chg is not None:
-            move = f"  {'▲' if chg >= 0 else '▼'}{abs(chg):.2f}%"
-        lines.append(f"{label}  {fmt.format(last)}{move}")
+        move = "n/a" if chg is None else f"{chg:+.2f}%"
+        rows.append((label, fmt.format(last), move))
+
+    if not rows:
+        return []
+
+    label_w = max(len(r[0]) for r in rows)
+    value_w = max(len(r[1]) for r in rows)
+    lines = ["<pre>"]
+    for label, value, move in rows:
+        lines.append(html.escape(
+            f"{label.ljust(label_w)}  {value.rjust(value_w)}  {move.rjust(8)}"))
+    lines.append("</pre>")
     return lines
 
 

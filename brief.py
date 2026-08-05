@@ -63,6 +63,10 @@ def esc(s):
     return html.escape(str(s), quote=False)
 
 
+def head(label):
+    return f"▎<b>{label}</b>"
+
+
 def load_seen():
     try:
         return json.loads(SEEN_FILE.read_text())
@@ -91,10 +95,11 @@ def company_news(symbol, name):
 
 def build(seen_set, seen_list):
     now = datetime.now(UK)
-    L = [f"<b>PORTFOLIO BRIEF</b>",
-         f"<i>{now.strftime('%A %d %B · %H:%M')}</i>", ""]
+    L = ["<b>MONZO PORTFOLIO BRIEF</b>",
+         f"<i>{now.strftime('%A %d %B %Y · %H:%M')} UK</i>", ""]
 
     # 1. Portfolio ---------------------------------------------------------
+    L.append(head("PORTFOLIO POTS"))
     try:
         L.append(pots.render())
     except Exception as e:
@@ -107,13 +112,15 @@ def build(seen_set, seen_list):
     try:
         best, worst = markets.movers([s for s, _, _ in HOLDINGS], top=3)
         if best:
-            L.append("<b>YOUR TOP PERFORMERS TODAY</b>")
-            for i, (t, c) in enumerate(best, 1):
-                L.append(f"{i}. {esc(names.get(t, t))}  ▲{c:+.2f}%")
-            L.append("")
-            L.append("<b>WEAKEST</b>")
-            for t, c in worst:
-                L.append(f"· {esc(names.get(t, t))}  {c:+.2f}%")
+            L.append(head("YOUR MOVERS TODAY"))
+            combined = [(t, c, "▲") for t, c in best] + [(t, c, "▼") for t, c in worst]
+            name_w = max(len(names.get(t, t)) for t, _, _ in combined)
+            table = ["<pre>"]
+            for t, c, arrow in combined:
+                label = names.get(t, t)
+                table.append(html.escape(f"{arrow} {label.ljust(name_w)}  {c:+.2f}%"))
+            table.append("</pre>")
+            L += table
             L += ["", RULE, ""]
     except Exception as e:
         print(f"movers: {e}", file=sys.stderr)
@@ -122,7 +129,7 @@ def build(seen_set, seen_list):
     try:
         rows = markets.render()
         if rows:
-            L.append("<b>MARKETS</b>")
+            L.append(head("MARKETS"))
             L += rows
             L += ["", RULE, ""]
     except Exception as e:
@@ -144,9 +151,9 @@ def build(seen_set, seen_list):
         time.sleep(0.2)
 
     if picked:
-        L.append("<b>YOUR COMPANIES</b>")
+        L.append(head("YOUR COMPANIES"))
         for a in picked:
-            L.append(f"· <b>{esc(a['company'])}</b> — {esc(a['title'][:120])}")
+            L.append(f"• <b>{esc(a['company'])}</b> — {esc(a['title'][:120])}")
         L += ["", RULE, ""]
 
     # 5 & 6. Topical feeds -------------------------------------------------
@@ -166,23 +173,24 @@ def build(seen_set, seen_list):
             if count >= cfg["max"]:
                 break
         if items:
-            L.append(f"<b>{cfg['label']}</b>")
+            L.append(head(cfg["label"]))
             for a in items:
                 src = f"  <i>{esc(a['source'])}</i>" if a["source"] else ""
-                L.append(f"· {esc(a['title'][:130])}{src}")
+                L.append(f"• {esc(a['title'][:130])}{src}")
             L += ["", RULE, ""]
 
     # Optional AI read - skipped entirely if no API key is set
     reads = analysis.analyse(all_headlines + [a["title"] for a in picked])
     if reads:
-        L.append("<b>WHAT THIS TOUCHES</b>")
+        L.append(head("WHAT THIS TOUCHES"))
         for line in reads:
-            L.append(f"· {esc(line)}")
+            L.append(f"• {esc(line)}")
         L.append("<i>Mechanism only — not a forecast.</i>")
         L += ["", RULE, ""]
 
     while L and L[-1] in ("", RULE):
         L.pop()
+    L += ["", RULE, "", "<i>Automated brief · informational only, not financial advice.</i>"]
     return "\n".join(L)
 
 

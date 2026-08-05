@@ -10,6 +10,7 @@ GBP. A 1% USD gain with a 1% weaker pound is roughly flat to you. So each
 price is converted to GBP before comparing.
 """
 
+import html
 import sys
 from datetime import date, datetime
 
@@ -111,31 +112,33 @@ def render():
     rows, missing = snapshot()
     total = sum(r["value"] for r in rows)
     invested = sum(p[2] for p in POTS)
-
-    lines = [f"<b>Pots — {datetime.now().strftime('%a %d %b')}</b>", ""]
-    lines.append(f"Estimated total: <b>£{total:,.2f}</b>")
     delta = total - invested
-    lines.append(f"vs {BASELINE_DATE} baseline: "
-                 f"{'+' if delta >= 0 else ''}£{delta:,.2f} "
-                 f"({delta / invested * 100:+.2f}%)")
-    lines.append("")
+
+    lines = [f"Total: <b>£{total:,.2f}</b>  "
+             f"({'+' if delta >= 0 else ''}£{delta:,.2f}, "
+             f"{delta / invested * 100:+.2f}% vs {BASELINE_DATE})", ""]
+
+    ordered = sorted(rows, key=lambda x: -(x["pct"] if x["pct"] is not None else -999))
+    name_w = max(len(r["name"]) for r in ordered)
+    value_w = max(len(f"£{r['value']:,.2f}") for r in ordered)
+
+    table = ["<pre>"]
+    for r in ordered:
+        value_s = f"£{r['value']:,.2f}"
+        pct_s = f"{r['pct']:+.2f}%" if r["pct"] is not None else "not tracked"
+        table.append(html.escape(
+            f"{r['name'].ljust(name_w)}  {value_s.rjust(value_w)}  {pct_s.rjust(12)}"))
+    table.append("</pre>")
+    lines += table
 
     tracked = [r for r in rows if r["pct"] is not None]
-    for r in sorted(rows, key=lambda x: -(x["pct"] if x["pct"] is not None else -999)):
-        if r["pct"] is None:
-            lines.append(f"{r['name']}: £{r['value']:,.2f}  <i>(not tracked)</i>")
-        else:
-            arrow = "▲" if r["pct"] >= 0 else "▼"
-            lines.append(f"{r['name']}: £{r['value']:,.2f}  "
-                         f"{arrow} {r['pct']:+.2f}%")
-
     if tracked:
         best = max(tracked, key=lambda x: x["pct"])
         worst = min(tracked, key=lambda x: x["pct"])
-        lines += ["", f"Best: <b>{best['name']}</b> {best['pct']:+.2f}%",
-                  f"Worst: {worst['name']} {worst['pct']:+.2f}%"]
+        lines += ["", f"Best: <b>{html.escape(best['name'])}</b> {best['pct']:+.2f}%   "
+                  f"Worst: {html.escape(worst['name'])} {worst['pct']:+.2f}%"]
 
-    lines += ["", "<i>Estimated from ETF prices — Monzo's app is the "
+    lines += ["", "<i>Estimated from ETF prices — Monzo's app shows the "
               "real figure.</i>"]
     if missing:
         lines.append(f"<i>No price data: {', '.join(missing)}</i>")
