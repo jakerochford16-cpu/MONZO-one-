@@ -1,0 +1,37 @@
+name: Portfolio brief
+
+on:
+  schedule:
+    - cron: "0 6,8,10,12,14,16,18,20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: brief
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python brief.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Save what was already sent
+        if: always()
+        run: |
+          git config user.name "brief-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git pull --rebase || true
+          git add seen.json || true
+          git commit -m "seen" || echo "nothing to commit"
+          git push || true
