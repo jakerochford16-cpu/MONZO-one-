@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enum support in Prisma, so Difficulty, RiskLevel and
+// CostType are plain strings, validated against the sets in src/types.ts.
+
+model Country {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  continent   String
+  summary     String
+  heroTag     String
+  activities  Activity[]
+  createdAt   DateTime   @default(now())
+}
+
+model Activity {
+  id              String     @id @default(cuid())
+  country         Country    @relation(fields: [countryId], references: [id])
+  countryId       String
+  title           String
+  region          String
+  category        String
+  description     String
+  costType        String
+  costEstimate    String?
+  currency        String?
+  difficulty      String
+  riskLevel       String
+  permitRequired  Boolean    @default(false)
+  guideRequired   Boolean    @default(false)
+  bestSeason      String?
+  latitude        Float?
+  longitude       Float?
+  tags            String
+  createdAt       DateTime   @default(now())
+
+  @@index([countryId])
+}
