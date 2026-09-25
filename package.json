@@ -8,6 +8,7 @@
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @extremist-travel/api\" \"npm run dev -w web\"",
     "dev:api": "npm run dev -w @extremist-travel/api",
     "dev:web": "npm run dev -w web",
+    "dev:3d-web": "npm run dev -w 3d-web",
     "db:seed": "npm run seed -w @extremist-travel/api",
     "db:migrate": "npm run prisma:migrate -w @extremist-travel/api"
   },
